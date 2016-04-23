@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.3.5">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/aabashkin/wavsep-service</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+source ~/.nvm/nvm.sh
+
+##########Pre Test##########
+
+#Configuration
+TARGET=&quot;http://wavsep.test:8080&quot;
+CHECKS=&quot;rfi&quot;
+
+#Project Info
+export DOMAIN=&quot;mydomain&quot;
+export TEAM=&quot;myteam&quot;
+
+#Keys
+#NOTE: Replace &apos;@&apos; in user email address with &apos;-&apos;
+export USERNAME=&quot;dummyuser-dummy.host&quot;
+export WEBUIHOST=&quot;arachni.web&quot;
+export KEY_WRAPPER=$JENKINS_HOME/keys/${USERNAME}_wrapper
+export KEY_SCP=$JENKINS_HOME/keys/${USERNAME}_scp
+
+
+### Run Arachni with specified checks in proxy mode
+BUILD_ID=dontKillMe nohup arachni $TARGET --scope-page-limit=0 --plugin=proxy:ignore_responses=true --checks=$CHECKS --audit-json --report-save-path=$JENKINS_HOME/reports/arachni/$BUILD_TAG.afr &amp;
+
+
+##########Maven Test##########
+
+
+sg proxied -c &quot;newman -c test/wavsep-service-RFI.json.postman_collection&quot;
+
+
+##########Post Test##########
+
+arachni_shutdown_report_import.sh
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <htmlpublisher.HtmlPublisher plugin="htmlpublisher@1.3">
+      <reportTargets>
+        <htmlpublisher.HtmlPublisherTarget>
+          <reportName>Arachni Security Report</reportName>
+          <reportDir>/var/lib/jenkins/reports/arachni/unzipped/</reportDir>
+          <reportFiles>index.html</reportFiles>
+          <keepAll>true</keepAll>
+          <allowMissing>false</allowMissing>
+          <wrapperName>htmlpublisher-wrapper.html</wrapperName>
+        </htmlpublisher.HtmlPublisherTarget>
+      </reportTargets>
+    </htmlpublisher.HtmlPublisher>
+  </publishers>
+  <buildWrappers/>
+</project>
